@@ -1,0 +1,47 @@
+#!/bin/sh
+
+# Plex DVR Recording Post-Processing script, adapted from 
+# https://forums.plex.tv/discussion/comment/1255591/#Comment_1255591 
+# and 
+# https://forums.plex.tv/discussion/comment/1255617/#Comment_1255617
+
+TMPDIR=`mktemp -d`
+
+INPUT_MEDIA="$1"
+FILENAME=`basename "$INPUT_MEDIA"`
+GENERATED_CHAPTERS=$TMPDIR/`echo $FILENAME | sed "s/mkv$/chp/"`
+CONVERTED_CHAPTERS=$TMPDIR/chapters.txt
+MEDIA_LANG="eng"
+
+timestamp() {
+        secs=`echo $1 | sed 's/AddChapterBySecond(\([0-9]\+\).*/\1/'`
+        date -u -d @${secs} +"%T.000"
+}
+
+if [ -s "$INPUT_MEDIA" ]; then
+	comskip -n --output="$TMPDIR" --zpchapter "$INPUT_MEDIA"
+	# convert chapters to format used by mkvpropedit
+	if [ -s "$GENERATED_CHAPTERS" ]; then	
+		echo "CHAPTER00=0:00:00.000" > "$CONVERTED_CHAPTERS"
+		echo "CHAPTER00NAME=Show Segment 1" >> "$CONVERTED_CHAPTERS"
+		chapter=1
+		grep -e 'AddChapterBySecond([0-9]\+,Show Segment)' "$GENERATED_CHAPTERS" | while read seg; do
+			ts=`timestamp $seg`
+			printf 'CHAPTER%02d=%s\n' $chapter $ts >> "$CONVERTED_CHAPTERS"
+			printf 'CHAPTER%02dNAME=Show Segment %d\n' $chapter $((chapter+1)) >> "$CONVERTED_CHAPTERS"
+			chapter=$((chapter+1))
+		done
+	fi
+
+	if [ -s "$CONVERTED_CHAPTERS" ]; then
+		# update the file's language specification and push chapters of discovered show segments
+		echo "Updating media language to $MEDIA_LANG and adding show segment chapters for $INPUT_MEDIA"
+		mkvpropedit "$INPUT_MEDIA" --edit track:a1 --set language=$MEDIA_LANG --edit track:v1 --set language=$MEDIA_LANG --chapters "$CONVERTED_CHAPTERS"
+	else
+		# modify language even if chapters weren't generated
+		echo "Updating media language to $MEDIA_LANG for $INPUT_MEDIA"
+		mkvpropedit "$INPUT_MEDIA" --edit track:a1 --set language=$MEDIA_LANG --edit track:v1 --set language=$MEDIA_LANG
+	fi
+fi
+
+rm -rf $TMPDIR

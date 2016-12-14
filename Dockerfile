@@ -3,10 +3,42 @@ FROM debian:jessie
 # Install basic required packages.
 RUN set -x \
  && apt-get update \
+ && echo "deb http://www.deb-multimedia.org jessie main non-free" >> /etc/apt/sources.list \
+ && echo "deb-src http://www.deb-multimedia.org jessie main non-free" >> /etc/apt/sources.list \
+ && apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get install -y --force-yes --no-install-recommends \
+        deb-multimedia-keyring \
+ && apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        autoconf \
+        automake \
         ca-certificates \
         curl \
+        ffmpeg \
+        git \
+        libargtable2-dev \
+        libavcodec-dev \
+        libavformat-dev \
+        libavutil-dev \
+        libtool \
+        make \
+        mkvtoolnix \
         xmlstarlet \
+ && cd /tmp \
+ && git clone https://github.com/erikkaashoek/Comskip.git \
+ && cd Comskip \
+ && ./autogen.sh && ./configure && make && make install \
+ && cd / \
+ && rm -rf /tmp/* \
+ && apt-get remove -y \
+        autoconf \
+        automake \
+        libargtable2-dev \
+        libavformat-dev \
+        libavutil-dev \
+        libavcodec-dev \
+        libtool \
+        make \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
@@ -17,8 +49,8 @@ RUN set -x \
     # This gets the latest non-plexpass version
     # Note: We created a dummy /bin/start to avoid install to fail due to upstart not being installed.
     # We won't use upstart anyway.
- && curl -I 'https://plex.tv/downloads/latest/1?channel=8&build=linux-ubuntu-x86_64&distro=ubuntu' \
- && curl -L 'https://plex.tv/downloads/latest/1?channel=8&build=linux-ubuntu-x86_64&distro=ubuntu' -o plexmediaserver.deb \
+ && curl -I 'https://downloads.plex.tv/plex-media-server/1.2.0.3114-de38375/plexmediaserver_1.2.0.3114-de38375_amd64.deb' \
+ && curl -L 'https://downloads.plex.tv/plex-media-server/1.2.0.3114-de38375/plexmediaserver_1.2.0.3114-de38375_amd64.deb' -o plexmediaserver.deb \
  && touch /bin/start \
  && chmod +x /bin/start \
  && dpkg -i plexmediaserver.deb \
