@@ -3,8 +3,8 @@ FROM debian:stretch-slim
 # Install basic required packages.
 RUN set -x \
  && apt-get update \
- && echo "deb http://www.deb-multimedia.org jessie main non-free" >> /etc/apt/sources.list \
- && echo "deb-src http://www.deb-multimedia.org jessie main non-free" >> /etc/apt/sources.list \
+ && echo "deb http://www.deb-multimedia.org stretch main non-free" >> /etc/apt/sources.list \
+ && echo "deb-src http://www.deb-multimedia.org stretch main non-free" >> /etc/apt/sources.list \
  && apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get install -y --force-yes --no-install-recommends \
         deb-multimedia-keyring \
@@ -24,6 +24,7 @@ RUN set -x \
         libtool \
         make \
         mkvtoolnix \
+        xmlstarlet \
  && cd /tmp \
  && git clone https://github.com/erikkaashoek/Comskip.git \
  && cd Comskip \
