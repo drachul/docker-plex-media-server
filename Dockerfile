@@ -1,4 +1,4 @@
-FROM debian:jessie
+FROM debian:stretch-slim
 
 # Install basic required packages.
 RUN set -x \
@@ -14,6 +14,7 @@ RUN set -x \
         automake \
         ca-certificates \
         curl \
+        dumb-init \
         ffmpeg \
         git \
         libargtable2-dev \
@@ -23,7 +24,6 @@ RUN set -x \
         libtool \
         make \
         mkvtoolnix \
-        xmlstarlet \
  && cd /tmp \
  && git clone https://github.com/erikkaashoek/Comskip.git \
  && cd Comskip \
@@ -43,19 +43,19 @@ RUN set -x \
  && rm -rf /var/lib/apt/lists/*
 
 RUN set -x \
+    # Upgrade to get possible critical fixes.
+ && apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y --no-install-recommends \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/* \
     # Create plex user
- && useradd --system --uid 797 -M --shell /usr/sbin/nologin plex \
+ && useradd --system --uid 797 --create-home --shell /usr/sbin/nologin plex \
     # Note: We created a dummy /bin/start to avoid install to fail due to upstart not being installed.
     # We won't use upstart anyway.
  && touch /bin/start \
  && chmod +x /bin/start \
  && touch /bin/stop \
  && chmod +x /bin/stop \
-    # Install dumb-init
-    # https://github.com/Yelp/dumb-init
- && DUMP_INIT_URI=$(curl -L https://github.com/Yelp/dumb-init/releases/latest | grep -Po '(?<=href=")[^"]+_amd64(?=")') \
- && curl -Lo /usr/local/bin/dumb-init "https://github.com/$DUMP_INIT_URI" \
- && chmod +x /usr/local/bin/dumb-init \
     # Create writable config directory in case the volume isn't mounted
  && mkdir /config \
  && chown plex:plex /config
@@ -73,6 +73,10 @@ ENV PLEX_MEDIA_SERVER_MAX_PLUGIN_PROCS=6 \
     PLEXPASS_LOGIN='' \
     PLEXPASS_PASSWORD=''
 
+# Temporary workound
+# https://github.com/wernight/docker-plex-media-server/issues/38
+RUN ln -sf $(which true) /sbin/udevadm
+
 COPY root /
 
 VOLUME ["/config", "/media"]
@@ -80,5 +84,5 @@ VOLUME ["/config", "/media"]
 EXPOSE 32400
 
 WORKDIR /usr/lib/plexmediaserver
-ENTRYPOINT ["/usr/local/bin/dumb-init", "/plex-autoupdate-entrypoint.sh"]
+ENTRYPOINT ["dumb-init", "/plex-autoupdate-entrypoint.sh"]
 CMD ["/install_run_plex.sh"]
